@@ -48,10 +48,10 @@ class transformation(nn.Module):
 class CIFAR_100(Dataset):
     def __init__(self, train = True):
         if train:
-            self.data =  torchvision.datasets.CIFAR100(root='./CIFAR-100', train=True,
+            self.data =  torchvision.datasets.CIFAR100(root='../CIFAR-100', train=True,
                                         download=True)
         else:
-            self.data = torchvision.datasets.CIFAR100(root='./CIFAR-100', train=False,
+            self.data = torchvision.datasets.CIFAR100(root='../CIFAR-100', train=False,
                                         download=True)
             
         self.classes = 100
@@ -67,10 +67,10 @@ class CIFAR_100(Dataset):
 class CIFAR_100_transformations(Dataset):
     def __init__(self, train = True, **kwargs):
         if train:
-            self.data =  torchvision.datasets.CIFAR100(root='./CIFAR-100', train=True,
+            self.data =  torchvision.datasets.CIFAR100(root='../CIFAR-100', train=True,
                                         download=True)
         else:
-            self.data = torchvision.datasets.CIFAR100(root='./CIFAR-100', train=False,
+            self.data = torchvision.datasets.CIFAR100(root='../CIFAR-100', train=False,
                                         download=True)
             
         self.classes = 100
