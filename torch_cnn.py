@@ -4,8 +4,7 @@ import torch
 import math
 import sys
 sys.path.append("../") # go to parent dir
-import utils.ResNet18 as ResNet18
-import utils.PositionalEncoding as PositionalEncoding
+import ResNet18 as ResNet18
 
 
 class res18(nn.Module):

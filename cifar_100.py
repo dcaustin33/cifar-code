@@ -2,6 +2,7 @@ import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
+import torch
 
 class transformation(nn.Module):
     
@@ -39,10 +40,10 @@ class transformation(nn.Module):
                                 transforms.Normalize(mean, std),
                             ]
                         )
-        def forward(self, x):
-            x = self.resize_crop(x)
-            x = torch.clamp(x, 0, 1)
-            return self.transform(x)
+    def forward(self, x):
+        x = self.resize_crop(x)
+        x = torch.clamp(x, 0, 1)
+        return self.transform(x)
 
     
 class CIFAR_100(Dataset):
@@ -65,7 +66,7 @@ class CIFAR_100(Dataset):
         return image, label
     
 class CIFAR_100_transformations(Dataset):
-    def __init__(self, train = True, **kwargs):
+    def __init__(self, views = 1, train = True, **kwargs):
         if train:
             self.data =  torchvision.datasets.CIFAR100(root='../CIFAR-100', train=True,
                                         download=True)
@@ -75,6 +76,8 @@ class CIFAR_100_transformations(Dataset):
             
         self.classes = 100
         self.transform = transformation(**kwargs)
+        self.views = views
+
             
     def __len__(self):
         return self.data.__len__()
@@ -82,8 +85,9 @@ class CIFAR_100_transformations(Dataset):
     def __getitem__(self, idx):
         image, label = self.data.__getitem__(idx)
         data = {}
-        image = tfs.ToTensor()(image)
-        data['image1'] = self.transform(image)
-        data['image2'] = self.transform(image)
+        image = transforms.ToTensor()(image)
+        for i in range(self.views):
+            name = 'image' + str(i)
+            data[name] = self.transform(image)
         data['label'] = label
         return data
