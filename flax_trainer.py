@@ -64,16 +64,22 @@ class Trainer:
             for i, data in enumerate(self.dataloader):
                 if steps >= self.args.steps: break
                 steps += 1
-                print(steps)
-                data['label'] = jnp.array(data['label'])
-                data['label'] = jax.nn.one_hot(data['label'], num_classes=100)
-                data['image0'] = jnp.array(data['image0'].permute(0, 2, 3, 1))
-                gradients = self.training_step(data, 
-                                                    self.params, 
-                                                    self.metrics)
+                
+                data['label'] = jax.device_put(jax.nn.one_hot(jnp.array(data['label']), 100))
+                data['image0'] = jax.device_put(jnp.array(data['image0']))
+                
+                                          
+                gradients, acc1, acc5, loss = self.training_step(data['image0'],
+                                                                 data['label'],
+                                                                self.params)
+                self.metrics['total'] += data['image0'].shape[0]
+                self.metrics['Accuracy'] += acc1
+                self.metrics['Accuracy Top 5'] += acc5
+
+                self.metrics['Loss'] += loss
                 if steps % self.args.log_n_train_steps == 0:
                     logger(self.metrics, steps, wandb = self.wandb, train = True)
-
+                
                     
                 updates, self.optimizer_state = self.optimizer.update(gradients, self.optimizer_state, self.params)
                 self.params = optax.apply_updates(self.params, updates)

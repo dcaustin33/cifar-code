@@ -74,15 +74,15 @@ class Trainer:
                         loss = self.training_step(data, self.model, self.metrics, steps, log = True, wandb = self.wandb, args = self.args)
                     else:
                         loss = self.training_step(data, self.model, self.metrics, steps, log = False, wandb = self.wandb, args = self.args)
-                        
+
                     self.optimizer.zero_grad()
                     scaler.scale(loss).backward()
                     scaler.step(self.optimizer)
-                    
-                    if self.schedule:
-                        self.schedule.step()
-                        
-                    scaler.update()
+
+                if self.schedule:
+                    self.schedule.step()
+
+                scaler.update()
                 if steps % 10 == 0 and self.args.rank == 0:
                     print(steps, time.time() - now) 
                 if steps % self.args.log_n_steps == 0:

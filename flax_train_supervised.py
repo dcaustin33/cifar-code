@@ -11,7 +11,7 @@ import optax
 import wandb
 
 #custom imports
-from utils import  top_k_error_rate_metric
+from utils import  top_5_error_rate_metric, top_1_error_rate_metric
 import cifar_100
 from logger import log_metrics as logger
 import flax_trainer as trainer
@@ -66,43 +66,32 @@ def create_optimizer(optimizer, lr, weight_decay, params):
 def cross_entropy_loss(logits, labels):
     return optax.softmax_cross_entropy(logits=logits, labels=labels).mean()
 
-
-
-def training_step(data: list, 
-               params,
-               metrics: dict):
+@jax.jit
+def training_step(images, 
+                  labels,
+                   params):
 
     def loss_fn(params):
-        logits, _ = model.apply({'params': params}, data['image0'], mutable=['batch_stats'])
-        loss = cross_entropy_loss(logits=logits, labels=data['label'])
+        logits, _ = model.apply({'params': params}, images, mutable=['batch_stats'])
+        loss = cross_entropy_loss(logits=logits, labels=labels)
         return loss, logits
-    (loss1, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(params)
+    (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(params)
 
-    acc1 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 1) 
-    acc5 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 5) 
+    acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = labels) 
+    acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = labels) 
     
-    metrics['total'] += 1
-    metrics['Accuracy'] += acc1
-    metrics['Accuracy Top 5'] += acc5
-    
-    metrics['Loss'] += loss1
-    
-    return grads
+    return grads, acc1, acc5, loss
 
-@jax.jit 
-def validation_step(data: list, 
-               params,
-               metrics: dict):
+@jax.jit
+def validation_step(images, 
+                  labels,
+                   params):
 
-    logits, _ = model.apply({'params': params}, data['image0'], mutable=['batch_stats'])
-    acc1 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 1) 
-    acc5 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 5) 
+    logits, _ = model.apply({'params': params}, images, mutable=['batch_stats'])
+    acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = labels) 
+    acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = labels) 
     
-    metrics['total'] += 1
-    metrics['Accuracy'] += acc1
-    metrics['Accuracy Top 5'] += acc5
-
-    return None
+    return grads, acc1, acc5, loss
 
 
 
@@ -114,7 +103,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', nargs='?', default = .001, type=float)
     parser.add_argument('--workers', nargs='?', default = 8,  type=int)
     parser.add_argument('--steps', nargs='?', default = 10000,  type=int)
-    parser.add_argument('--batch_size', nargs='?', default = 256,  type=int)
+    parser.add_argument('--batch_size', nargs='?', default = 128,  type=int)
     parser.add_argument('--val_steps', nargs='?', default = 70,  type=int)
     parser.add_argument('--log_n_steps', nargs='?', default = 800,  type=int)
     parser.add_argument('-log', action='store_true')

@@ -1,0 +1,61 @@
+Starting from step 0
+Training for 10001 steps
+10 23.116076707839966
+20 26.710708379745483
+30 30.39534616470337
+40 34.05231714248657
+50 37.678025007247925
+60 41.255369901657104
+70 44.87526202201843
+80 48.53132128715515
+90 52.072304248809814
+100 Loss: 427.55 Acc 0.06
+100 55.81476902961731
+110 59.33434796333313
+120 62.938493490219116
+130 66.52751731872559
+140 70.29576921463013
+150 73.93037414550781
+160 77.60518336296082
+170 81.24879837036133
+180 84.90733599662781
+190 88.50045704841614
+200 Loss: 392.8 Acc 0.1
+200 93.26970863342285
+210 96.90538573265076
+220 100.49250531196594
+230 104.15149736404419
+240 107.828449010849
+250 111.38673114776611
+260 115.04098558425903
+270 118.61468863487244
+280 122.35106563568115
+290 126.03190755844116
+300 Loss: 367.86 Acc 0.14
+300 129.63538098335266
+310 133.18694400787354
+320 136.74362921714783
+330 140.3629002571106
+340 144.06650042533875
+350 147.5667004585266
+360 151.1554298400879
+Traceback (most recent call last):
+  File "/home/ec2-user/cifar/cifar-code/flax_train_supervised.py", line 227, in <module>
+    trainer.train()
+  File "/home/ec2-user/cifar/cifar-code/flax_trainer.py", line 84, in train
+    updates, self.optimizer_state = self.optimizer.update(gradients, self.optimizer_state, self.params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/optax/_src/combine.py", line 54, in update_fn
+    updates, new_s = fn(updates, s, params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/optax/_src/transform.py", line 334, in update_fn
+    mu = update_moment(updates, state.mu, b1, 1)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/optax/_src/transform.py", line 83, in update_moment
+    return jax.tree_util.tree_map(
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/tree_util.py", line 205, in tree_map
+    return treedef.unflatten(f(*xs) for xs in zip(*all_leaves))
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/tree_util.py", line 205, in <genexpr>
+    return treedef.unflatten(f(*xs) for xs in zip(*all_leaves))
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/optax/_src/transform.py", line 84, in <lambda>
+    lambda g, t: (1 - decay) * (g ** order) + decay * t, updates, moments)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/numpy/lax_numpy.py", line 4639, in deferring_binary_op
+    return binary_op(*args)
+KeyboardInterrupt

@@ -1,0 +1,56 @@
+Starting from step 0
+Training for 10001 steps
+10 22.299349546432495
+20 25.92499089241028
+30 29.482056617736816
+40 33.17271590232849
+50 36.87502098083496
+60 40.43472623825073
+70 44.05867290496826
+80 47.73921322822571
+90 51.310009479522705
+100 Loss: 428.27 Acc 0.06
+100 54.92828869819641
+110 58.69744157791138
+120 62.23680591583252
+130 65.9798481464386
+140 69.59038090705872
+150 73.31622695922852
+160 76.82891702651978
+170 80.49632859230042
+180 84.2030520439148
+190 87.84316492080688
+200 Loss: 392.78 Acc 0.1
+200 92.06048846244812
+210 95.72521615028381
+220 99.29483962059021
+230 102.96614503860474
+240 106.65193724632263
+250 110.31856966018677
+260 113.95969986915588
+270 117.7124695777893
+280 121.26085710525513
+290 124.90395259857178
+300 Loss: 366.28 Acc 0.14
+300 128.45133256912231
+310 132.00426411628723
+320 135.6475474834442
+330 139.27120542526245
+340 142.9405472278595
+350 146.6465654373169
+Traceback (most recent call last):
+  File "/home/ec2-user/cifar/cifar-code/flax_train_supervised.py", line 227, in <module>
+    trainer.train()
+  File "/home/ec2-user/cifar/cifar-code/flax_trainer.py", line 84, in train
+    updates, self.optimizer_state = self.optimizer.update(gradients, self.optimizer_state, self.params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/optax/_src/combine.py", line 54, in update_fn
+    updates, new_s = fn(updates, s, params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/optax/_src/transform.py", line 335, in update_fn
+    nu = update_moment_per_elem_norm(updates, state.nu, b2, 2)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/optax/_src/transform.py", line 106, in update_moment_per_elem_norm
+    return jax.tree_util.tree_map(
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/tree_util.py", line 205, in tree_map
+    return treedef.unflatten(f(*xs) for xs in zip(*all_leaves))
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/tree_util.py", line 205, in <genexpr>
+    return treedef.unflatten(f(*xs) for xs in zip(*all_leaves))
+KeyboardInterrupt

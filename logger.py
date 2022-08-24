@@ -10,7 +10,7 @@ def log_metrics(metrics: dict,
             metrics[i] = metrics[i] / metrics['total']
 
     if train:
-        print(step, "Loss:", round(metrics['Loss'].item(), 2), 'Acc', round(metrics['Accuracy'].item(), 2), metrics['LR'] )
+        print(step, "Loss:", round(metrics['Loss'].item(), 2), 'Acc', round(metrics['Accuracy'].item(), 2))
     
     
     if not train:
