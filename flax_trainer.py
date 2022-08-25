@@ -8,10 +8,15 @@ from flax.training import train_state, checkpoints
 import optax
 from logger import log_metrics as logger
 
+@jax.jit
+def loss_fn(params, images, labels):
+    logits, _ = model.apply({'params': params}, images, mutable=['batch_stats'])
+    log_preds = jnp.log(logits)
+    return -jnp.sum(labels * log_preds), logits
+
 class Trainer:
     def __init__(self, 
-                 model: nn.Module,
-                 params: train_state,
+                 state: train_state,
                  dataloader: DataLoader, 
                  val_dataloader: DataLoader,
                  args, 
@@ -24,15 +29,12 @@ class Trainer:
                  val_metrics: dict = None,
                  wandb = None):
         
-        self.model = model
-        self.params = params
+        self.state = state
         self.dataloader = dataloader
         self.val_dataloader = val_dataloader
         self.args = args
         self.training_step = training_step
         self.validation_step = validation_step
-        self.optimizer = optimizer
-        self.optimizer_state = optimizer_state
         self.current_step = current_step
         self.metrics = metrics
         self.val_metrics = val_metrics
@@ -64,25 +66,18 @@ class Trainer:
             for i, data in enumerate(self.dataloader):
                 if steps >= self.args.steps: break
                 steps += 1
-                
-                data['label'] = jax.device_put(jax.nn.one_hot(jnp.array(data['label']), 100))
-                data['image0'] = jax.device_put(jnp.array(data['image0']))
-                
-                                          
-                gradients, acc1, acc5, loss = self.training_step(data['image0'],
-                                                                 data['label'],
-                                                                self.params)
-                self.metrics['total'] += data['image0'].shape[0]
-                self.metrics['Accuracy'] += acc1
-                self.metrics['Accuracy Top 5'] += acc5
+                #print(steps)
+                data['label'] = jnp.array(data['label'])
+                data['image0'] = jnp.array(data['image0'].permute(0, 2, 3, 1))
 
-                self.metrics['Loss'] += loss
+                self.state, self.metrics = self.training_step(self.state, data)
+
                 if steps % self.args.log_n_train_steps == 0:
                     logger(self.metrics, steps, wandb = self.wandb, train = True)
-                
+
                     
-                updates, self.optimizer_state = self.optimizer.update(gradients, self.optimizer_state, self.params)
-                self.params = optax.apply_updates(self.params, updates)
+                #updates, self.optimizer_state = self.optimizer.update(gradients, self.optimizer_state, self.params)
+                #self.params = optax.apply_updates(self.params, updates)
   
 
                 if steps % 10 == 0 and self.args.rank == 0:
