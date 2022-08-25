@@ -11,7 +11,7 @@ import optax
 import wandb
 
 #custom imports
-from utils import  top_5_error_rate_metric, top_1_error_rate_metric
+from utils import  top_k_error_rate_metric
 import cifar_100
 from logger import log_metrics as logger
 import flax_trainer as trainer
@@ -57,41 +57,86 @@ def create_params(model, example, rng):
     return params
 
 
-def create_optimizer(optimizer, lr, weight_decay, params):
-    optimizer = optimizer(lr, weight_decay = weight_decay)
-    optimizer_state = optimizer.init(params)
-    return optimizer, optimizer_state
-
-
-def cross_entropy_loss(logits, labels):
-    return optax.softmax_cross_entropy(logits=logits, labels=labels).mean()
+def create_optimizer(optimizer, lr, wd):
+    optimizer = optimizer(lr)
+    return optimizer
 
 @jax.jit
-def training_step(images, 
-                  labels,
-                   params):
+def cross_entropy_loss(logits, labels):
+    labels_onehot = jax.nn.one_hot(labels, num_classes=100)
+    return optax.softmax_cross_entropy(logits=logits, labels=labels_onehot).mean()
+
+@jax.jit
+def compute_metrics(logits, labels):
+    loss = cross_entropy_loss(logits=logits, labels=labels)
+    accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
+    metrics = {
+        'loss': loss,
+        'accuracy': accuracy,
+        }
+    return metrics
+
+def create_train_state(rng, optimizer):
+    """Creates initial `TrainState`."""
+    model = resnet18()
+    batch = jnp.ones((4, 32, 32, 3))  # (N, H, W, C) format
+    params = model.init(jax.random.PRNGKey(0), batch)['params']
+    tx = optimizer
+    return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+
+@jax.jit
+def training_step(state, batch):
 
     def loss_fn(params):
-        logits, _ = model.apply({'params': params}, images, mutable=['batch_stats'])
-        loss = cross_entropy_loss(logits=logits, labels=labels)
+        logits, _ = model.apply({'params': params}, batch['image0'], mutable=['batch_stats'])
+        loss = cross_entropy_loss(logits=logits, labels=batch['label'])
         return loss, logits
-    (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(params)
-
-    acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = labels) 
-    acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = labels) 
     
-    return grads, acc1, acc5, loss
-
-@jax.jit
-def validation_step(images, 
-                  labels,
-                   params):
-
-    logits, _ = model.apply({'params': params}, images, mutable=['batch_stats'])
-    acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = labels) 
-    acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = labels) 
+    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
+    (_, logits), grads = grad_fn(state.params)
+    state = state.apply_gradients(grads=grads)
+    metrics = compute_metrics(logits=logits, labels=batch['label'])
     
-    return grads, acc1, acc5, loss
+    return state, metrics
+
+'''def training_step(data: list, 
+               params,
+               metrics: dict,
+               optimizer,
+               optimizer_state):
+    
+    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
+
+    #(loss1, logits), grads = grad_fn(params, data['image0'], data['label'])
+    loss, logits = loss_fn(optimizer.target, data['image0'], data['label'])
+    #(loss1, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(params, data['image0'], data['label'])
+    #sgrads = 0
+    #logits, _ = model.apply({'params': params}, data['image0'], mutable=['batch_stats'])
+
+    acc1 = 0#top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 1) 
+    acc5 = 0#top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 5) 
+    
+    metrics['total'] += 1
+    metrics['Accuracy'] += acc1
+    metrics['Accuracy Top 5'] += acc5
+    
+    metrics['Loss'] += 0
+    return params, optimizer, optimizer_state'''
+
+@jax.jit 
+def validation_step(data: list, 
+               params,
+               metrics: dict):
+
+    logits, _ = model.apply({'params': params}, data['image0'], mutable=['batch_stats'])
+    acc1 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 1) 
+    acc5 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 5) 
+    
+    metrics['total'] += 1
+    metrics['Accuracy'] += acc1
+    metrics['Accuracy Top 5'] += acc5
+
+    return None
 
 
 
@@ -101,9 +146,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='CIFAR 100 Test Runs')
     parser.add_argument('--name', default = 'CIFAR_100_Supervised', type = str)
     parser.add_argument('--lr', nargs='?', default = .001, type=float)
-    parser.add_argument('--workers', nargs='?', default = 8,  type=int)
+    parser.add_argument('--workers', nargs='?', default = 1,  type=int)
     parser.add_argument('--steps', nargs='?', default = 10000,  type=int)
-    parser.add_argument('--batch_size', nargs='?', default = 128,  type=int)
+    parser.add_argument('--batch_size', nargs='?', default = 2,  type=int)
     parser.add_argument('--val_steps', nargs='?', default = 70,  type=int)
     parser.add_argument('--log_n_steps', nargs='?', default = 800,  type=int)
     parser.add_argument('-log', action='store_true')
@@ -176,7 +221,7 @@ if __name__ == '__main__':
     rng = jax.random.PRNGKey(0)
     rng, init_rng = jax.random.split(rng)
     model = resnet18()
-    params = create_params(model, jnp.ones((4, 32, 32, 3)), rng)
+
     schedule1 = optax.linear_schedule(3e-05, args.lr, args.warmup_steps)
     schedule2 = optax.cosine_decay_schedule(args.lr, args.steps)
     schedule = optax.join_schedules([schedule1, schedule2], [args.warmup_steps])
@@ -191,8 +236,11 @@ if __name__ == '__main__':
 
 
     optimizer = optax.adamw
-    optimizer, optimizer_state = create_optimizer(optimizer, schedule, args.wd, params)
+    optimizer = create_optimizer(optimizer, schedule, args.wd)
     
+    rng = jax.random.PRNGKey(0)
+    rng, init_rng = jax.random.split(rng)
+    train_state = create_train_state(init_rng, optimizer)
     
     #prepare the data
     dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args)
@@ -205,15 +253,12 @@ if __name__ == '__main__':
         
     #instantiate and train
     trainer = trainer.Trainer(
-                             model = model,
-                             params = params,
+                             state = train_state,
                              dataloader = dataloader, 
                              val_dataloader = val_dataloader,
                              args = args, 
                              training_step = training_step,
                              validation_step = validation_step,
-                             optimizer = optimizer, 
-                             optimizer_state = optimizer_state, 
                              current_step = steps,
                              metrics = metrics,
                              val_metrics = val_metrics,
