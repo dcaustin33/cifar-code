@@ -61,20 +61,9 @@ def create_optimizer(optimizer, lr, wd):
     optimizer = optimizer(lr)
     return optimizer
 
-@jax.jit
 def cross_entropy_loss(logits, labels):
-    labels_onehot = jax.nn.one_hot(labels, num_classes=100)
-    return optax.softmax_cross_entropy(logits=logits, labels=labels_onehot).mean()
+    return optax.softmax_cross_entropy(logits=logits, labels=labels).mean()
 
-@jax.jit
-def compute_metrics(logits, labels):
-    loss = cross_entropy_loss(logits=logits, labels=labels)
-    accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
-    metrics = {
-        'loss': loss,
-        'accuracy': accuracy,
-        }
-    return metrics
 
 def create_train_state(rng, optimizer):
     """Creates initial `TrainState`."""
@@ -84,19 +73,31 @@ def create_train_state(rng, optimizer):
     tx = optimizer
     return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
 
-@jax.jit
-def training_step(state, batch):
+def loss_fn(params, data):
+    logits, _ = model.apply({'params': params}, data['image0'], mutable=['batchstats'])
+    loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis= 0)
+    return loss, logits
 
-    def loss_fn(params):
-        logits, _ = model.apply({'params': params}, batch['image0'], mutable=['batch_stats'])
-        loss = cross_entropy_loss(logits=logits, labels=batch['label'])
+
+
+@jax.jit
+def training_step(state, data):
+    
+    def loss_fn(params, data):
+        logits, _ = model.apply({'params': params}, data['image0'], mutable=['batch_stats'])
+        loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis= 0)
         return loss, logits
-    
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (_, logits), grads = grad_fn(state.params)
+    (_, logits), grads = grad_fn(state.params, data)
     state = state.apply_gradients(grads=grads)
-    metrics = compute_metrics(logits=logits, labels=batch['label'])
     
+    acc1 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 1) 
+    acc5 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 5) 
+
+    metrics['total'] += data['image0'].shape[0]
+    metrics['Accuracy'] += acc1
+    metrics['Accuracy Top 5'] += acc5
+
     return state, metrics
 
 '''def training_step(data: list, 
@@ -251,7 +252,6 @@ if __name__ == '__main__':
     else: wandb = None
     steps = 0
         
-    #instantiate and train
     trainer = trainer.Trainer(
                              state = train_state,
                              dataloader = dataloader, 
@@ -265,9 +265,4 @@ if __name__ == '__main__':
                              wandb = wandb)
     
     trainer.train()
-    
-    
-    
-    
-    
     
