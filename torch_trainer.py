@@ -68,16 +68,18 @@ class Trainer:
                 if steps >= self.args.steps: break
                 steps += 1
 
-                with torch.autocast('cuda'):
-                    if steps % self.args.log_n_train_steps == 0:
-                        self.metrics['LR'] = self.schedule.get_last_lr()[0]
-                        loss = self.training_step(data, self.model, self.metrics, steps, log = True, wandb = self.wandb, args = self.args)
-                    else:
-                        loss = self.training_step(data, self.model, self.metrics, steps, log = False, wandb = self.wandb, args = self.args)
+                #with torch.autocast('cuda'):
+                if steps % self.args.log_n_train_steps == 0:
+                    self.metrics['LR'] = self.schedule.get_last_lr()[0]
+                    loss = self.training_step(data, self.model, self.metrics, steps, log = True, wandb = self.wandb, args = self.args)
+                else:
+                    loss = self.training_step(data, self.model, self.metrics, steps, log = False, wandb = self.wandb, args = self.args)
 
-                    self.optimizer.zero_grad()
-                    scaler.scale(loss).backward()
-                    scaler.step(self.optimizer)
+                self.optimizer.zero_grad()
+                scaler.scale(loss).backward()
+                scaler.step(self.optimizer)
+                #loss.backward()
+                #self.optimizer.step()
 
                 if self.schedule:
                     self.schedule.step()

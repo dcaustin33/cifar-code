@@ -75,10 +75,6 @@ class Trainer:
 
                 if steps % self.args.log_n_train_steps == 0:
                     logger(self.metrics, steps, wandb = self.wandb, train = True)
-
-                    
-                #updates, self.optimizer_state = self.optimizer.update(gradients, self.optimizer_state, self.params)
-                #self.params = optax.apply_updates(self.params, updates)
   
 
                 if steps % 10 == 0 and self.args.rank == 0:

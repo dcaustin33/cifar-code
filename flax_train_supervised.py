@@ -11,7 +11,7 @@ import optax
 import wandb
 
 #custom imports
-from utils import  top_k_error_rate_metric
+from utils import  top_1_error_rate_metric, top_5_error_rate_metric
 import cifar_100
 from logger import log_metrics as logger
 import flax_trainer as trainer
@@ -89,10 +89,10 @@ def training_step(state, data):
         return loss, logits
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
     (_, logits), grads = grad_fn(state.params, data)
-    state = state.apply_gradients(grads=grads)
+    #state = state.apply_gradients(grads=grads)
     
-    acc1 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 1) 
-    acc5 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 5) 
+    acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
+    acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
 
     metrics['total'] += data['image0'].shape[0]
     metrics['Accuracy'] += acc1
@@ -100,38 +100,14 @@ def training_step(state, data):
 
     return state, metrics
 
-'''def training_step(data: list, 
-               params,
-               metrics: dict,
-               optimizer,
-               optimizer_state):
-    
-    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-
-    #(loss1, logits), grads = grad_fn(params, data['image0'], data['label'])
-    loss, logits = loss_fn(optimizer.target, data['image0'], data['label'])
-    #(loss1, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(params, data['image0'], data['label'])
-    #sgrads = 0
-    #logits, _ = model.apply({'params': params}, data['image0'], mutable=['batch_stats'])
-
-    acc1 = 0#top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 1) 
-    acc5 = 0#top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 5) 
-    
-    metrics['total'] += 1
-    metrics['Accuracy'] += acc1
-    metrics['Accuracy Top 5'] += acc5
-    
-    metrics['Loss'] += 0
-    return params, optimizer, optimizer_state'''
-
 @jax.jit 
 def validation_step(data: list, 
                params,
                metrics: dict):
 
     logits, _ = model.apply({'params': params}, data['image0'], mutable=['batch_stats'])
-    acc1 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 1) 
-    acc5 = top_k_error_rate_metric(logits = logits, one_hot_labels = data['label'], k = 5) 
+    acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
+    acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
     
     metrics['total'] += 1
     metrics['Accuracy'] += acc1
@@ -149,7 +125,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', nargs='?', default = .001, type=float)
     parser.add_argument('--workers', nargs='?', default = 1,  type=int)
     parser.add_argument('--steps', nargs='?', default = 10000,  type=int)
-    parser.add_argument('--batch_size', nargs='?', default = 2,  type=int)
+    parser.add_argument('--batch_size', nargs='?', default = 256,  type=int)
     parser.add_argument('--val_steps', nargs='?', default = 70,  type=int)
     parser.add_argument('--log_n_steps', nargs='?', default = 800,  type=int)
     parser.add_argument('-log', action='store_true')
@@ -265,4 +241,9 @@ if __name__ == '__main__':
                              wandb = wandb)
     
     trainer.train()
+    
+    
+    
+    
+    
     

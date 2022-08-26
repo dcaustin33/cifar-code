@@ -89,6 +89,5 @@ class CIFAR_100_transformations(Dataset):
         for i in range(self.views):
             name = 'image' + str(i)
             data[name] = self.transform(image)
-            data[name] = data[name].permute(1, 2, 0)
         data['label'] = label
         return data

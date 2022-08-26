@@ -157,7 +157,6 @@ class ResNet(nn.Module):
 
         
 def resnet18():
-    print(BasicBlock)
     return ResNet(BasicBlock, [2, 2, 2, 2])           
 def resnet50():
     return ResNet(Bottleneck, [3, 4, 6, 3])
