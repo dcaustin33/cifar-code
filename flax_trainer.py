@@ -68,6 +68,7 @@ class Trainer:
                 steps += 1
                 #print(steps)
                 data['label'] = jnp.array(data['label'])
+                data['label'] = jax.nn.one_hot(data['label'], num_classes=100)
                 data['image0'] = jnp.array(data['image0'].permute(0, 2, 3, 1))
 
                 self.state, self.metrics = self.training_step(self.state, data)
