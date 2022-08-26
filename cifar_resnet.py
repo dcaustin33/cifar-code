@@ -106,10 +106,9 @@ class ResNet(nn.Module):
     layers: list
     num_classes: int = 100
     norm_layer: nn.Module = nn.BatchNorm
-    block_type: str = 'Bottleneck'
         
     def setup(self):
-        self.conv1 = nn.Conv(3, kernel_size = (3, 3), strides = 1, use_bias = False, padding = ((2, 2), (2, 2)))
+        self.conv1 = nn.Conv(64, kernel_size = (3, 3), strides = 1, use_bias = False, padding = ((2, 2), (2, 2)))
         self.bn1 = self.norm_layer(use_running_average = False)
         
         self.layer1 = self.make_layer(self.block, 64,  self.layers[0], stride = 1)
@@ -124,7 +123,12 @@ class ResNet(nn.Module):
         assert stride in [1, 2]
         
         layers = []
-        layers.append(block(planes, stride, first_of_layer = True))
+        if planes == 64:
+            layers.append(block(planes, stride, first_of_layer = False))
+        else:
+            layers.append(block(planes, stride, first_of_layer = True))
+
+        #layers.append(block(planes, stride, first_of_layer = True))
         
         for i in range(1, blocks):
             layers.append(block(planes))
@@ -135,14 +139,17 @@ class ResNet(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = nn.relu(out)
-        out = nn.max_pool(out, (3, 3), strides = (2, 2), padding = ((1, 1), (1, 1)))
+
+        #no max pooling at this resolution
+        #out = nn.max_pool(out, (3, 3), strides = (2, 2), padding = ((1, 1), (1, 1)))
         
-        out = self.layer1(x)
-        out = self.layer2(x)
-        out = self.layer3(x)
-        out = self.layer4(x)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
         
         out= jnp.mean(out, axis=(1, 2))
+        
         out = self.fc(out)
         
         return out
@@ -150,6 +157,7 @@ class ResNet(nn.Module):
 
         
 def resnet18():
+    print(BasicBlock)
     return ResNet(BasicBlock, [2, 2, 2, 2])           
 def resnet50():
     return ResNet(Bottleneck, [3, 4, 6, 3])
