@@ -6,13 +6,7 @@ import time
 import os
 from flax.training import train_state, checkpoints
 import optax
-from logger import log_metrics as logger
-
-@jax.jit
-def loss_fn(params, images, labels):
-    logits, _ = model.apply({'params': params}, images, mutable=['batch_stats'])
-    log_preds = jnp.log(logits)
-    return -jnp.sum(labels * log_preds), logits
+from flax_logger import log_metrics as logger
 
 class Trainer:
     def __init__(self, 
@@ -39,7 +33,14 @@ class Trainer:
         self.metrics = metrics
         self.val_metrics = val_metrics
         self.wandb = wandb
-        
+
+    def convert_data(self, data):
+        data['label'] = jnp.array(data['label'])
+        data['label'] = jax.nn.one_hot(data['label'], num_classes=100)
+        data['image0'] = jnp.array(data['image0'].permute(0, 2, 3, 1))
+
+        return data
+            
     def train(self):
 
         now = time.time()
@@ -67,32 +68,31 @@ class Trainer:
                 if steps >= self.args.steps: break
                 steps += 1
                 #print(steps)
-                data['label'] = jnp.array(data['label'])
-                data['label'] = jax.nn.one_hot(data['label'], num_classes=100)
-                data['image0'] = jnp.array(data['image0'].permute(0, 2, 3, 1))
+                data = self.convert_data(data)
 
-                self.state, self.metrics = self.training_step(self.state, data)
+                self.state = self.training_step(self.state, data, self.metrics)
 
                 if steps % self.args.log_n_train_steps == 0:
                     logger(self.metrics, steps, wandb = self.wandb, train = True)
-  
-
                 if steps % 10 == 0 and self.args.rank == 0:
                     print(steps, time.time() - now) 
+                
                 if steps % self.args.log_n_steps == 0:
-                    checkpoints.save_checkpoint(ckpt_dir='{name}_checkpoint.pt'.format(name = check_path + self.args.name), 
-                                                target=self.params, step=steps)
+                    print('{name}'.format(name = check_path + self.args.name))
+                    checkpoints.save_checkpoint(ckpt_dir='{name}'.format(name = check_path + self.args.name), 
+                                                target=self.state, step=steps)
 
                     val_steps = 0
                     while val_steps < self.args.val_steps:
 
                         for k, val_data in enumerate(self.val_dataloader):
-                            print('Val', val_steps)
-                            if val_steps >= self.args.val_steps: 
-                                break
-                            _ = self.validation_step(val_data, self.params, self.val_metrics)
+
+                            val_data = self.convert_data(val_data)
+                            if val_steps >= self.args.val_steps: break
+
+                            _ = self.validation_step(self.state, val_data, self.val_metrics)
                             if val_steps % self.args.log_n_val_steps == 0 and val_steps != 0:
-                                logger(self.metrics, steps, wandb = self.wandb, train = False)
+                                logger(self.val_metrics, steps, wandb = self.wandb, train = False)
                             val_steps += 1
 
         checkpoints.save_checkpoint(ckpt_dir='{name}_Final.pt'.format(name = check_path + self.args.name), 

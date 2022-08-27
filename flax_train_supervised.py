@@ -30,8 +30,8 @@ def prepare_data(dataset_args, val_dataset_args):
     dataloader = DataLoader(
         train_dataset,
         shuffle = True,
-        batch_size=args.batch_size,
-        num_workers=args.workers if args.workers else 0,
+        batch_size=256,
+        num_workers=8,
         pin_memory=False,
         drop_last=True,
         persistent_workers=True
@@ -41,8 +41,8 @@ def prepare_data(dataset_args, val_dataset_args):
     val_dataloader = DataLoader(
         val_dataset,
         shuffle = True,
-        batch_size=args.batch_size,
-        num_workers=args.workers if args.workers else 0,
+        batch_size=256,
+        num_workers=8,
         pin_memory=False,
         drop_last=True,
         persistent_workers=False
@@ -78,19 +78,38 @@ def loss_fn(params, data):
     loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis= 0)
     return loss, logits
 
+def master_train_step(state, data, metrics):
+
+    state, logits, loss = training_step(state, data)
+
+    acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
+    acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
+
+    metrics['total'] += data['image0'].shape[0]
+    metrics['Loss'] += loss
+    metrics['Accuracy'] += acc1
+    metrics['Accuracy Top 5'] += acc5
+
+    return state
+
 
 
 @jax.jit
 def training_step(state, data):
     
     def loss_fn(params, data):
-        logits, _ = model.apply({'params': params}, data['image0'], mutable=['batch_stats'])
+        logits, _ = resnet18().apply({'params': params}, data['image0'], mutable=['batch_stats'])
         loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis= 0)
         return loss, logits
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (_, logits), grads = grad_fn(state.params, data)
-    #state = state.apply_gradients(grads=grads)
-    
+    (loss, logits), grads = grad_fn(state.params, data)
+    state = state.apply_gradients(grads=grads)
+
+    return state, logits, loss
+
+
+def master_val_step(state, data, metrics):
+    logits = validation_step(state, data)
     acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
     acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
 
@@ -98,36 +117,53 @@ def training_step(state, data):
     metrics['Accuracy'] += acc1
     metrics['Accuracy Top 5'] += acc5
 
-    return state, metrics
-
-@jax.jit 
-def validation_step(data: list, 
-               params,
-               metrics: dict):
-
-    logits, _ = model.apply({'params': params}, data['image0'], mutable=['batch_stats'])
-    acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
-    acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
-    
-    metrics['total'] += 1
-    metrics['Accuracy'] += acc1
-    metrics['Accuracy Top 5'] += acc5
-
     return None
+
+
+@jax.jit
+def validation_step(state, data):
+    
+    logits, _ = resnet18().apply({'params': state.params}, data['image0'], mutable=['batch_stats'])
+    return logits
 
 
 
 
 if __name__ == '__main__':
 
+    dataset_args = {
+                 'crop_size': 32,
+                 'brightness': 0.4, 
+                 'contrast': 0.4, 
+                 'saturation': .2, 
+                 'hue': .1, 
+                 'color_jitter_prob': .8, 
+                 'gray_scale_prob': 0.2, 
+                 'horizontal_flip_prob': 0.5, 
+                 'gaussian_prob': .5, 
+                 'min_scale': 0.16, 
+                 'max_scale': 0.9}
+    val_dataset_args = {
+                 'crop_size': 32,
+                 'brightness': 0.4, 
+                 'contrast': 0.4, 
+                 'saturation': .2, 
+                 'hue': .1, 
+                 'color_jitter_prob': 0, 
+                 'gray_scale_prob': 0, 
+                 'horizontal_flip_prob': 0.5, 
+                 'gaussian_prob': 0, 
+                 'min_scale': 0.9, 
+                 'max_scale': 1}
+
     parser = argparse.ArgumentParser(description='CIFAR 100 Test Runs')
-    parser.add_argument('--name', default = 'CIFAR_100_Supervised', type = str)
+    parser.add_argument('--name', default = 'Flax_CIFAR_100_Supervised', type = str)
     parser.add_argument('--lr', nargs='?', default = .001, type=float)
     parser.add_argument('--workers', nargs='?', default = 1,  type=int)
     parser.add_argument('--steps', nargs='?', default = 10000,  type=int)
     parser.add_argument('--batch_size', nargs='?', default = 256,  type=int)
     parser.add_argument('--val_steps', nargs='?', default = 70,  type=int)
-    parser.add_argument('--log_n_steps', nargs='?', default = 800,  type=int)
+    parser.add_argument('--log_n_steps', nargs='?', default = 100,  type=int)
     parser.add_argument('-log', action='store_true')
     parser.add_argument('--data_path', default = 'CIFAR-100', type = str)
     parser.add_argument('--gpus', default = 1, type = int)
@@ -212,29 +248,33 @@ if __name__ == '__main__':
                                                     )
 
 
-    optimizer = optax.adamw
-    optimizer = create_optimizer(optimizer, schedule, args.wd)
+    optimizer = optax.adamw(args.lr, weight_decay=args.wd)
+    #optimizer = create_optimizer(optimizer, schedule, args.wd)
     
     rng = jax.random.PRNGKey(0)
     rng, init_rng = jax.random.split(rng)
-    train_state = create_train_state(init_rng, optimizer)
+    state = create_train_state(init_rng, optimizer)
     
     #prepare the data
-    dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args)
+    #dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args)
 
     #log if applicable
     if args.log and args.rank == 0:
         wandb = wandb.init(config = args, name = args.name, project = 'CIFAR')
     else: wandb = None
     steps = 0
+
+    train_dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args)
+    import time
+    now = time.time()
         
     trainer = trainer.Trainer(
-                             state = train_state,
+                             state = state,
                              dataloader = dataloader, 
                              val_dataloader = val_dataloader,
                              args = args, 
-                             training_step = training_step,
-                             validation_step = validation_step,
+                             training_step = master_train_step,
+                             validation_step = master_val_step,
                              current_step = steps,
                              metrics = metrics,
                              val_metrics = val_metrics,
