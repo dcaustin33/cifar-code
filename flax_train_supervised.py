@@ -163,11 +163,12 @@ if __name__ == '__main__':
     parser.add_argument('--steps', nargs='?', default = 10000,  type=int)
     parser.add_argument('--batch_size', nargs='?', default = 256,  type=int)
     parser.add_argument('--val_steps', nargs='?', default = 70,  type=int)
-    parser.add_argument('--log_n_steps', nargs='?', default = 100,  type=int)
+    parser.add_argument('--log_n_steps', nargs='?', default = 1000,  type=int)
     parser.add_argument('-log', action='store_true')
     parser.add_argument('--data_path', default = 'CIFAR-100', type = str)
     parser.add_argument('--gpus', default = 1, type = int)
     parser.add_argument('--log_n_train_steps', default = 100, type = int)
+    parser.add_argument('--warmup_steps', default = 200, type = int)
     parser.add_argument('-checkpoint', action='store_true')
     parser.add_argument('--checkpoint_path', default = None, type = str)
     
@@ -185,7 +186,6 @@ if __name__ == '__main__':
         
     args.wd = 1.5e-6
     args.steps += 1
-    args.warmup_steps = 200
     args.log_n_val_steps = args.val_steps - 1
         
     args.dataset_args = {

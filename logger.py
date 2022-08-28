@@ -17,9 +17,9 @@ def log_metrics(metrics: dict,
         new_metrics = {}
         for i in metrics:
             new_metrics['Val' + i] = metrics[i]
-        metrics = new_metrics
-    if wandb:
+    if train and wandb:
         wandb.log(metrics, step = step)
+    elif wandb: wandb.log(new_metrics, step = step)
 
     metrics['total'] = 0
     metrics['Loss'] = 0

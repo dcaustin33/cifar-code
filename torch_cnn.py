@@ -19,13 +19,13 @@ class res18(nn.Module):
             
         example = torch.ones(input_size)
         self.feature_dim = (self.network(example.unsqueeze(0))).shape[1]
-        
-        self.classifier = nn.Linear(self.feature_dim, classes)
+
+        self.network.fc = nn.Linear(self.feature_dim, classes)
             
             
             
     def forward(self, x, second_video = False, seconds = None, arrow_time = None, diff = None):
         
         a1 = self.network(x)
-        a2 = self.classifier(a1)
-        return a2
+        #a2 = self.classifier(a1)
+        return a1

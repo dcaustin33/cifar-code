@@ -1,0 +1,38 @@
+Files already downloaded and verified
+Files already downloaded and verified
+Starting from step 0
+Training for 10001 steps
+Traceback (most recent call last):
+  File "/home/ec2-user/cifar/cifar-code/flax_train_supervised.py", line 283, in <module>
+    trainer.train()
+  File "/home/ec2-user/cifar/cifar-code/flax_trainer.py", line 73, in train
+    self.state = self.training_step(self.state, data, self.metrics)
+  File "/home/ec2-user/cifar/cifar-code/flax_train_supervised.py", line 83, in master_train_step
+    state, logits, loss = training_step(state, data)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/traceback_util.py", line 162, in reraise_with_filtered_traceback
+    return fun(*args, **kwargs)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/api.py", line 527, in cache_miss
+    out_flat = xla.xla_call(
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/core.py", line 1937, in bind
+    return call_bind(self, fun, *args, **params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/core.py", line 1953, in call_bind
+    outs = top_trace.process_call(primitive, fun_, tracers, params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/core.py", line 687, in process_call
+    return primitive.impl(f, *tracers, **params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 208, in _xla_call_impl
+    compiled_fun = xla_callable(fun, device, backend, name, donated_invars,
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/linear_util.py", line 295, in memoized_fun
+    ans = call(fun, *args)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 257, in _xla_callable_uncached
+    return lower_xla_callable(fun, device, backend, name, donated_invars, False,
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 849, in compile
+    self._executable = XlaCompiledComputation.from_xla_computation(
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 956, in from_xla_computation
+    compiled = compile_or_get_cached(backend, xla_computation, options,
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 921, in compile_or_get_cached
+    return backend_compile(backend, computation, compile_options, host_callbacks)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/profiler.py", line 294, in wrapper
+    return func(*args, **kwargs)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 865, in backend_compile
+    return backend.compile(built_c, compile_options=options)
+KeyboardInterrupt

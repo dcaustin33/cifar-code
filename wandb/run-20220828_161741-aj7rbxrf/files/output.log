@@ -1,0 +1,50 @@
+Starting from step 0
+Training for 10001 steps
+10 4.613800048828125
+20 5.690592288970947
+30 6.794617414474487
+40 7.858455181121826
+50 8.909793615341187
+60 9.965008974075317
+70 11.010738134384155
+80 12.048568964004517
+90 13.109705448150635
+100 Loss: 427.32 Acc 0.06
+100 14.183552742004395
+110 15.220527172088623
+120 16.280584573745728
+130 17.334638595581055
+140 18.386698961257935
+150 19.437575101852417
+160 20.50141978263855
+170 21.580076932907104
+180 22.607900381088257
+190 23.599273681640625
+200 Loss: 810.19 Acc 0.06
+200 25.384748935699463
+210 26.51297903060913
+220 27.597951889038086
+230 28.62910747528076
+240 29.69931125640869
+250 30.76541042327881
+260 31.81349205970764
+270 32.889699935913086
+280 33.95212459564209
+Traceback (most recent call last):
+  File "/home/ec2-user/cifar/cifar-code/train_supervised.py", line 213, in <module>
+    trainer.train()
+  File "/home/ec2-user/cifar/cifar-code/torch_trainer.py", line 80, in train
+    scaler.step(self.optimizer)
+  File "/opt/conda/envs/pytorch/lib/python3.9/site-packages/torch/cuda/amp/grad_scaler.py", line 338, in step
+    retval = self._maybe_opt_step(optimizer, optimizer_state, *args, **kwargs)
+  File "/opt/conda/envs/pytorch/lib/python3.9/site-packages/torch/cuda/amp/grad_scaler.py", line 285, in _maybe_opt_step
+    retval = optimizer.step(*args, **kwargs)
+  File "/opt/conda/envs/pytorch/lib/python3.9/site-packages/torch/optim/lr_scheduler.py", line 65, in wrapper
+    return wrapped(*args, **kwargs)
+  File "/opt/conda/envs/pytorch/lib/python3.9/site-packages/torch/optim/optimizer.py", line 109, in wrapper
+    return func(*args, **kwargs)
+  File "/opt/conda/envs/pytorch/lib/python3.9/site-packages/torch/autograd/grad_mode.py", line 27, in decorate_context
+    return func(*args, **kwargs)
+  File "/opt/conda/envs/pytorch/lib/python3.9/site-packages/torch/optim/adam.py", line 136, in step
+    state = self.state[p]
+KeyboardInterrupt

@@ -1,0 +1,25 @@
+2022-08-28 16:17:41,208 INFO    MainThread:7785 [wandb_setup.py:_flush():76] Configure stats pid to 7785
+2022-08-28 16:17:41,208 INFO    MainThread:7785 [wandb_setup.py:_flush():76] Loading settings from /home/ec2-user/.config/wandb/settings
+2022-08-28 16:17:41,208 INFO    MainThread:7785 [wandb_setup.py:_flush():76] Loading settings from /home/ec2-user/cifar/cifar-code/wandb/settings
+2022-08-28 16:17:41,208 INFO    MainThread:7785 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'_require_service': 'True'}
+2022-08-28 16:17:41,208 INFO    MainThread:7785 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'train_supervised.py', 'program': '/home/ec2-user/cifar/cifar-code/train_supervised.py'}
+2022-08-28 16:17:41,208 INFO    MainThread:7785 [wandb_init.py:_log_setup():461] Logging user logs to /home/ec2-user/cifar/cifar-code/wandb/run-20220828_161741-aj7rbxrf/logs/debug.log
+2022-08-28 16:17:41,208 INFO    MainThread:7785 [wandb_init.py:_log_setup():462] Logging internal logs to /home/ec2-user/cifar/cifar-code/wandb/run-20220828_161741-aj7rbxrf/logs/debug-internal.log
+2022-08-28 16:17:41,208 INFO    MainThread:7785 [wandb_init.py:init():495] calling init triggers
+2022-08-28 16:17:41,209 INFO    MainThread:7785 [wandb_init.py:init():498] wandb.init called with sweep_config: {}
+config: {'name': 'CIFAR_100_Supervised', 'lr': 0.001, 'workers': 8, 'steps': 10001, 'batch_size': 256, 'val_steps': 70, 'log_n_steps': 800, 'log': True, 'data_path': 'CIFAR-100/', 'gpus': 1, 'log_n_train_steps': 100, 'checkpoint': False, 'checkpoint_path': None, 'dist_url': 'tcp://localhost:40000', 'world_size': -1, 'rank': 0, 'job_id': 0, 'wd': 1.5e-06, 'warmup_steps': 200, 'log_n_val_steps': 69, 'dataset_args': {'crop_size': 32, 'brightness': 0.4, 'contrast': 0.4, 'saturation': 0.2, 'hue': 0.1, 'color_jitter_prob': 0.6, 'gray_scale_prob': 0.2, 'horizontal_flip_prob': 0.5, 'gaussian_prob': 0.5, 'min_scale': 0.4, 'max_scale': 0.9}, 'val_dataset_args': {'crop_size': 32, 'brightness': 0.4, 'contrast': 0.4, 'saturation': 0.2, 'hue': 0.1, 'color_jitter_prob': 0, 'gray_scale_prob': 0, 'horizontal_flip_prob': 0.5, 'gaussian_prob': 0, 'min_scale': 0.9, 'max_scale': 1}}
+2022-08-28 16:17:41,209 INFO    MainThread:7785 [wandb_init.py:init():548] starting backend
+2022-08-28 16:17:41,209 INFO    MainThread:7785 [wandb_init.py:init():552] setting up manager
+2022-08-28 16:17:41,211 INFO    MainThread:7785 [backend.py:_multiprocessing_setup():97] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2022-08-28 16:17:41,213 INFO    MainThread:7785 [wandb_init.py:init():558] backend started and connected
+2022-08-28 16:17:41,219 INFO    MainThread:7785 [wandb_init.py:init():636] updated telemetry
+2022-08-28 16:17:41,266 INFO    MainThread:7785 [wandb_init.py:init():667] communicating run to backend with 30 second timeout
+2022-08-28 16:17:41,491 INFO    MainThread:7785 [wandb_run.py:_on_init():1982] communicating current version
+2022-08-28 16:17:41,556 INFO    MainThread:7785 [wandb_run.py:_on_init():1986] got version response 
+2022-08-28 16:17:41,556 INFO    MainThread:7785 [wandb_init.py:init():700] starting run threads in backend
+2022-08-28 16:17:46,561 INFO    MainThread:7785 [wandb_run.py:_console_start():1962] atexit reg
+2022-08-28 16:17:46,561 INFO    MainThread:7785 [wandb_run.py:_redirect():1820] redirect: SettingsConsole.WRAP_RAW
+2022-08-28 16:17:46,561 INFO    MainThread:7785 [wandb_run.py:_redirect():1885] Wrapping output streams.
+2022-08-28 16:17:46,562 INFO    MainThread:7785 [wandb_run.py:_redirect():1907] Redirects installed.
+2022-08-28 16:17:46,562 INFO    MainThread:7785 [wandb_init.py:init():732] run started, returning control to user process
+2022-08-28 16:18:26,550 WARNING MsgRouterThr:7785 [router.py:message_loop():76] message_loop has been closed

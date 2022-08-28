@@ -78,8 +78,6 @@ class Trainer:
                 self.optimizer.zero_grad()
                 scaler.scale(loss).backward()
                 scaler.step(self.optimizer)
-                #loss.backward()
-                #self.optimizer.step()
 
                 if self.schedule:
                     self.schedule.step()
