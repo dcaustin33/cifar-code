@@ -3,19 +3,22 @@ import argparse
 from torch.utils.data import DataLoader
 import jax
 import jax.numpy as jnp
+import flax.linen as nn
 import optax
 import wandb
 
 #custom imports
 from utils import  top_1_error_rate_metric, top_5_error_rate_metric
+import haiku as hk
 import cifar_100
 import flax_trainer as trainer
 from flax.training import train_state
-from cifar_resnet import resnet18
+from haiku_cifar_resnet import resnet18
 import cifar_100
 
 #python helper inputs
 import time
+from typing import NamedTuple
 
 
 def prepare_data(dataset_args, val_dataset_args):
@@ -43,11 +46,19 @@ def prepare_data(dataset_args, val_dataset_args):
     )
     return train_dataset, dataloader, val_dataloader
 
+class TrainState(NamedTuple):
+  params: hk.Params
+  optimizer: optax._src.base.GradientTransformation
+  opt_state: optax.OptState
 
-def create_params(model, example, rng):
-    model = model
-    batch = example  # (N, H, W, C) format
-    params = model.init(rng, batch)['params']
+
+
+def create_params(example, rng):
+    def resnet(x):
+        resnet = resnet18()
+        return resnet(x, True)
+    resnet = hk.transform_with_state(resnet)
+    params = resnet.init(rng, example)
     return params
 
 
@@ -58,23 +69,13 @@ def create_optimizer(optimizer, lr, wd):
 def cross_entropy_loss(logits, labels):
     return optax.softmax_cross_entropy(logits=logits, labels=labels).mean()
 
-
-def create_train_state(rng, optimizer):
-    """Creates initial `TrainState`."""
-    model = resnet18()
-    batch = jnp.ones((4, 32, 32, 3))  # (N, H, W, C) format
-    params = model.init(jax.random.PRNGKey(0), batch)['params']
-    tx = optimizer
-    return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
-
-def loss_fn(params, data):
-    logits, _ = model.apply({'params': params}, data['image0'], mutable=['batchstats'])
-    loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis= 0)
-    return loss, logits
-
 def master_train_step(state, data, metrics):
+    params = state.params
+    print(jax.tree_map(lambda x: x.dtype, state.params))
 
-    state, logits, loss = training_step(state, data)
+    logits, loss, grads = training_step(params, data)
+    updates, state.opt_state = state.optimizer.update(grads, state.opt_state, state.params)
+    state.params = optax.apply_updates(state.params, updates)
 
     acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
     acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
@@ -88,18 +89,17 @@ def master_train_step(state, data, metrics):
 
 
 
-@jax.jit
-def training_step(state, data):
+#@jax.jit
+def training_step(params, data):
     
     def loss_fn(params, data):
         logits, _ = resnet18().apply({'params': params}, data['image0'], mutable=['batch_stats'])
         loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis= 0)
         return loss, logits
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (loss, logits), grads = grad_fn(state.params, data)
-    state = state.apply_gradients(grads=grads)
+    (loss, logits), grads = grad_fn(params, data)
 
-    return state, logits, loss
+    return logits, loss, grads
 
 
 def master_val_step(state, data, metrics):
@@ -227,7 +227,6 @@ if __name__ == '__main__':
     #create the model and the optimizer
     rng = jax.random.PRNGKey(0)
     rng, init_rng = jax.random.split(rng)
-    model = resnet18()
     schedule = optax.warmup_cosine_decay_schedule(
                                                     init_value=3e-05,
                                                     peak_value=args.lr,
@@ -236,8 +235,12 @@ if __name__ == '__main__':
                                                     end_value=args.lr * .01,
                                                     )
 
+    #resnet = hk.transform(resnet18)
+    #params = resnet.init(rng, jnp.ones((4, 32, 32, 3)))
+    params = create_params(example = jnp.ones((4, 32, 32, 3)), rng = init_rng)
     optimizer = optax.adamw(schedule, weight_decay=args.wd)
-    state = create_train_state(init_rng, optimizer)
+    opt_state = optimizer.init(params)
+    state = TrainState(params, optimizer, opt_state)
     
     #prepare the data
     #dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args)

@@ -23,14 +23,14 @@ class BasicBlock(nn.Module):
     
     def setup(self):
         self.conv1 = conv3x3(self.planes, stride = self.stride)
-        self.bn1 = self.norm_layer(use_running_average = True)
+        self.bn1 = self.norm_layer(use_running_average = False)
         self.conv2 = conv3x3(self.planes)
-        self.bn2 = self.norm_layer(use_running_average = True)
+        self.bn2 = self.norm_layer(use_running_average = False)
         
         if self.stride != 1 or self.first_of_layer:
             self.downsample = True
             self.downsample_conv = conv1x1(self.planes, stride = self.stride)
-            self.downsample_bn = self.norm_layer(use_running_average = True)
+            self.downsample_bn = self.norm_layer(use_running_average = False)
             
         else: self.downsample = None
             
@@ -63,16 +63,16 @@ class Bottleneck(nn.Module):
     
     def setup(self):
         self.conv1 = conv1x1(self.planes)
-        self.bn1 = self.norm_layer(use_running_average = True)
+        self.bn1 = self.norm_layer(use_running_average = False)
         self.conv2 = conv3x3(self.planes, stride = self.stride)
-        self.bn2 = self.norm_layer(use_running_average = True)
+        self.bn2 = self.norm_layer(use_running_average = False)
         self.conv3 = conv1x1(self.planes * self.expansion)
-        self.bn3 = self.norm_layer(use_running_average = True)
+        self.bn3 = self.norm_layer(use_running_average = False)
         
         if self.stride != 1 or self.first_of_layer:
             self.downsample = True
             self.downsample_conv = conv1x1(self.planes * self.expansion, stride = self.stride)
-            self.downsample_bn = self.norm_layer(use_running_average = True)
+            self.downsample_bn = self.norm_layer(use_running_average = False)
         else: self.downsample = None
             
             
@@ -109,7 +109,7 @@ class ResNet(nn.Module):
         
     def setup(self):
         self.conv1 = nn.Conv(64, kernel_size = (3, 3), strides = 1, use_bias = False, padding = ((2, 2), (2, 2)))
-        self.bn1 = self.norm_layer(use_running_average = True)
+        self.bn1 = self.norm_layer(use_running_average = False)
         
         self.layer1 = self.make_layer(self.block, 64,  self.layers[0], stride = 1)
         self.layer2 = self.make_layer(self.block, 128, self.layers[1], stride = 2)
