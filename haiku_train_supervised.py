@@ -11,9 +11,9 @@ import wandb
 from utils import  top_1_error_rate_metric, top_5_error_rate_metric
 import haiku as hk
 import cifar_100
-import flax_trainer as trainer
-from flax.training import train_state
+import haiku_trainer as trainer
 from haiku_cifar_resnet import resnet18
+#from haiku_resnets import ResNet18 as resnet18
 import cifar_100
 
 #python helper inputs
@@ -48,9 +48,15 @@ def prepare_data(dataset_args, val_dataset_args):
 
 class TrainState(NamedTuple):
   params: hk.Params
+  state: hk.State
   optimizer: optax._src.base.GradientTransformation
   opt_state: optax.OptState
 
+
+def _forward(image, is_training: bool) -> jnp.ndarray:
+  """Forward application of the resnet."""
+  net = resnet18()
+  return net(image, is_training=is_training)
 
 
 def create_params(example, rng):
@@ -71,9 +77,10 @@ def cross_entropy_loss(logits, labels):
 
 def master_train_step(state, data, metrics):
     params = state.params
-    print(jax.tree_map(lambda x: x.dtype, state.params))
+    #print(params)
+    #print(state.state)
 
-    logits, loss, grads = training_step(params, data)
+    logits, loss, grads, new_state = training_step(state.state, params, data)
     updates, state.opt_state = state.optimizer.update(grads, state.opt_state, state.params)
     state.params = optax.apply_updates(state.params, updates)
 
@@ -85,21 +92,27 @@ def master_train_step(state, data, metrics):
     metrics['Accuracy'] += acc1
     metrics['Accuracy Top 5'] += acc5
 
+    state.state = new_state
+
     return state
 
+def loss_fn(state, params, data):
+    logits, state = forward.apply(params, state, None, data['image0'], is_training=True)
+    loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis = 0)
+    return loss, (loss, logits, state)
 
-
-#@jax.jit
-def training_step(params, data):
-    
-    def loss_fn(params, data):
-        logits, _ = resnet18().apply({'params': params}, data['image0'], mutable=['batch_stats'])
-        loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis= 0)
-        return loss, logits
-    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (loss, logits), grads = grad_fn(params, data)
-
-    return logits, loss, grads
+@jax.jit
+def training_step(state, params, data):
+    print('in')
+    time.sleep(1)
+    grads, (loss, logits, new_state)= (jax.grad(loss_fn, has_aux=True)(state, params, data))
+    logits, state = forward.apply(params, state, None, data['image0'], is_training=True)
+    loss, _ = loss_fn(state, params, data)
+    print(logits, logits.dtype)
+    print(loss, loss.dtype)
+    print('out')
+    time.sleep(1)
+    return logits, loss, grads, new_state
 
 
 def master_val_step(state, data, metrics):
@@ -237,11 +250,17 @@ if __name__ == '__main__':
 
     #resnet = hk.transform(resnet18)
     #params = resnet.init(rng, jnp.ones((4, 32, 32, 3)))
-    params = create_params(example = jnp.ones((4, 32, 32, 3)), rng = init_rng)
+    
+    forward = hk.transform_with_state(_forward)
+    params, state = forward.init(init_rng, jnp.ones((4, 32, 32, 3)), True)
     optimizer = optax.adamw(schedule, weight_decay=args.wd)
     opt_state = optimizer.init(params)
-    state = TrainState(params, optimizer, opt_state)
+
+    state = TrainState(params, state, optimizer, opt_state)
+    # Transform our forwards function into a pair of pure functions.
     
+
+
     #prepare the data
     #dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args)
 
@@ -254,7 +273,7 @@ if __name__ == '__main__':
     train_dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args)
     import time
     now = time.time()
-        
+     
     trainer = trainer.Trainer(
                              state = state,
                              dataloader = dataloader, 

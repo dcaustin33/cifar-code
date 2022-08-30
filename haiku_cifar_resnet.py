@@ -1,8 +1,4 @@
-from cmath import exp
-from operator import is_
-import torch
 import jax
-import jax.numpy as np
 import haiku as hk
 import jax.numpy as jnp
 
@@ -29,35 +25,35 @@ class BasicBlock(hk.Module):
 
 
         self.conv1 = conv3x3(self.planes, stride = self.stride)
-        self.bn1 = hk.BatchNorm(create_offset=True, 
+        '''self.bn1 = hk.BatchNorm(create_offset=True, 
                               create_scale=True, 
-                              decay_rate = .9)
+                              decay_rate = .9)'''
         self.conv2 = conv3x3(self.planes)
-        self.bn2 = hk.BatchNorm(create_offset=True, 
+        '''self.bn2 = hk.BatchNorm(create_offset=True, 
                               create_scale=True, 
-                              decay_rate = .9)
+                              decay_rate = .9)'''
         
         if self.stride != 1 or self.first_of_layer:
             self.downsample = True
             self.downsample_conv = conv1x1(self.planes, stride = self.stride)
-            self.downsample_bn = hk.BatchNorm(create_offset=True, 
+            '''self.downsample_bn = hk.BatchNorm(create_offset=True, 
                               create_scale=True, 
-                              decay_rate = .9)
+                              decay_rate = .9)'''
             
         else: self.downsample = None
             
-    def __call__(self, x, is_training):
+    def __call__(self, x, is_training, test_local_stats):
         identity = x
         out = self.conv1(x)
-        out = self.bn1(out, is_training=is_training)
+        #out = self.bn1(out, is_training=is_training, test_local_stats=test_local_stats)
         out = jax.nn.relu(out)
         
         out = self.conv2(out)
-        out = self.bn2(out, is_training=is_training)
+        #out = self.bn2(out, is_training=is_training,  test_local_stats=test_local_stats)
         
         if self.downsample:
             identity = self.downsample_conv(identity)
-            identity = self.downsample_bn(identity, is_training=is_training)
+            #identity = self.downsample_bn(identity, is_training=is_training,  test_local_stats=test_local_stats)
 
         out += identity
         out = jax.nn.relu(out)
@@ -139,10 +135,10 @@ class block_group(hk.Module):
         for i in range(1, blocks):
             self.layers.append(block(planes))
             
-    def __call__(self, x, is_training):
+    def __call__(self, x, is_training, test_local_stats):
         out = x
         for layer in self.layers:
-            out = layer(out, is_training=is_training)
+            out = layer(out, is_training=is_training,  test_local_stats=test_local_stats)
         return out
 
 class ResNet(hk.Module):
@@ -157,9 +153,9 @@ class ResNet(hk.Module):
         self.num_classes = num_classes
 
         self.conv1 = hk.Conv2D(64, kernel_shape = 3, stride = 1, with_bias = False, padding = ((2, 2), (2, 2)))
-        self.bn1 = hk.BatchNorm(create_offset=True, 
+        '''self.bn1 = hk.BatchNorm(create_offset=True, 
                               create_scale=True, 
-                              decay_rate = .9)
+                              decay_rate = .9)'''
         
         self.blocks = []
 
@@ -174,33 +170,17 @@ class ResNet(hk.Module):
         self.layer4 = self.make_layer(self.block, 512, self.layers[3], stride = 2)'''
         
         self.fc = hk.Linear(self.num_classes)
-        
-        
-    def make_layer(self, block, planes, blocks, stride = 1):
-        assert stride in [1, 2]
-        
-        layers = []
-        if planes == 64:
-            layers.append(block(planes, stride, first_of_layer = False))
-        else:
-            layers.append(block(planes, stride, first_of_layer = True))
-
-        #layers.append(block(planes, stride, first_of_layer = True))
-        
-        for i in range(1, blocks):
-            layers.append(block(planes))
+    
             
-        return layers
-            
-    def __call__(self, x, is_training = True):
+    def __call__(self, x, is_training = True, test_local_stats=False):
         out = self.conv1(x)
-        out = self.bn1(out, is_training=is_training)
+        #out = self.bn1(out, is_training=is_training, test_local_stats=test_local_stats)
         out = jax.nn.relu(out)
 
         #no max pooling at this resolution
         #out = nn.max_pool(out, (3, 3), strides = (2, 2), padding = ((1, 1), (1, 1)))
         for block in self.blocks:
-            out = block(out, is_training = is_training)
+            out = block(out, is_training = is_training, test_local_stats=test_local_stats)
         '''for layer in self.layer1: 
             out = layer(out, is_training=is_training)
         for layer2 in self.layer2: 
