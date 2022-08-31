@@ -8,16 +8,16 @@ import wandb
 
 #custom imports
 from utils import  top_1_error_rate_metric, top_5_error_rate_metric
-import cifar_100
+import cifar_100_data
 import flax_trainer as trainer
 from flax.training import train_state
 from flax_cifar_resnet import resnet18
-import cifar_100
+import cifar_100_data
 
 
 def prepare_data(dataset_args, val_dataset_args):
     
-    train_dataset = cifar_100.CIFAR_100_transformations(train = True, **dataset_args)
+    train_dataset = cifar_100_data.CIFAR_100_transformations(train = True, **dataset_args)
     dataloader = DataLoader(
         train_dataset,
         shuffle = True,
@@ -28,7 +28,7 @@ def prepare_data(dataset_args, val_dataset_args):
         persistent_workers=True
     )
 
-    val_dataset = cifar_100.CIFAR_100_transformations(views = 1, train = True, **val_dataset_args)
+    val_dataset = cifar_100_data.CIFAR_100_transformations(views = 1, train = True, **val_dataset_args)
     val_dataloader = DataLoader(
         val_dataset,
         shuffle = True,

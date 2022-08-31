@@ -10,11 +10,11 @@ import wandb
 #custom imports
 from utils import  top_1_error_rate_metric, top_5_error_rate_metric
 import haiku as hk
-import cifar_100
+import cifar_100_data
 import haiku_trainer as trainer
 from haiku_cifar_resnet import resnet18
 #from haiku_resnets import ResNet18 as resnet18
-import cifar_100
+import cifar_100_data
 
 #python helper inputs
 import time
@@ -23,7 +23,7 @@ from typing import NamedTuple
 
 def prepare_data(dataset_args, val_dataset_args, args):
     
-    train_dataset = cifar_100.CIFAR_100_transformations(train = True, **dataset_args)
+    train_dataset = cifar_100_data.CIFAR_100_transformations(train = True, **dataset_args)
     dataloader = DataLoader(
         train_dataset,
         shuffle = True,
@@ -34,7 +34,7 @@ def prepare_data(dataset_args, val_dataset_args, args):
         persistent_workers=True
     )
 
-    val_dataset = cifar_100.CIFAR_100_transformations(views = 1, train = True, **val_dataset_args)
+    val_dataset = cifar_100_data.CIFAR_100_transformations(views = 1, train = True, **val_dataset_args)
     val_dataloader = DataLoader(
         val_dataset,
         shuffle = True,

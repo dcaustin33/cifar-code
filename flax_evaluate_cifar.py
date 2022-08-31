@@ -8,10 +8,10 @@ import wandb
 
 #custom imports
 from utils import  top_1_error_rate_metric, top_5_error_rate_metric
-import cifar_100
+import cifar_100_data
 from flax.training import train_state, checkpoints
 from flax_cifar_resnet import resnet18
-import cifar_100
+import cifar_100_data
 import flax_evaluator as evaluate
 
 #python helper inputs
@@ -20,7 +20,7 @@ import time
 
 def prepare_data(dataset_args, val_dataset_args):
     
-    train_dataset = cifar_100.CIFAR_100_transformations(train = True, **dataset_args)
+    train_dataset = cifar_100_data.CIFAR_100_transformations(train = True, **dataset_args)
     dataloader = DataLoader(
         train_dataset,
         shuffle = True,
@@ -31,7 +31,7 @@ def prepare_data(dataset_args, val_dataset_args):
         persistent_workers=True
     )
 
-    val_dataset = cifar_100.CIFAR_100_transformations(views = 1, train = True, **val_dataset_args)
+    val_dataset = cifar_100_data.CIFAR_100_transformations(views = 1, train = True, **val_dataset_args)
     val_dataloader = DataLoader(
         val_dataset,
         shuffle = True,
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', default = 'CIFAR-100', type = str)
     parser.add_argument('--checkpoint_path', type = str)
     
-    
+
     args = parser.parse_args()
     if args.data_path[-1] != '/': args.data_path = args.data_path + '/'
         

@@ -10,7 +10,7 @@ import torch.distributed as dist
 #imports defined in folder
 from utils import get_accuracy
 from lars import LARSWrapper
-import cifar_100
+import cifar_100_data
 from logger import log_metrics as logger
 import torch_cnn
 import torch_trainer as trainer
@@ -25,7 +25,7 @@ import time
 
 def prepare_data(dataset_args, val_dataset_args):
     
-    train_dataset = cifar_100.CIFAR_100_transformations(train = True, **dataset_args)
+    train_dataset = cifar_100_data.CIFAR_100_transformations(train = True, **dataset_args)
     dataloader = DataLoader(
         train_dataset,
         shuffle = True,
@@ -36,7 +36,7 @@ def prepare_data(dataset_args, val_dataset_args):
         persistent_workers=True
     )
 
-    val_dataset = cifar_100.CIFAR_100_transformations(views = 1, train = True, **val_dataset_args)
+    val_dataset = cifar_100_data.CIFAR_100_transformations(views = 1, train = True, **val_dataset_args)
     val_dataloader = DataLoader(
         val_dataset,
         shuffle = True,
