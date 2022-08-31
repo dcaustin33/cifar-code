@@ -1,6 +1,3 @@
-import torch
-import jax
-import jax.numpy as np
 import flax.linen as nn
 import jax.numpy as jnp
 

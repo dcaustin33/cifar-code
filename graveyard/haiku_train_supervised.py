@@ -3,19 +3,25 @@ import argparse
 from torch.utils.data import DataLoader
 import jax
 import jax.numpy as jnp
+import flax.linen as nn
 import optax
 import wandb
 
 #custom imports
 from utils import  top_1_error_rate_metric, top_5_error_rate_metric
+import haiku as hk
 import cifar_100
-import flax_trainer as trainer
-from flax.training import train_state
-from flax_cifar_resnet import resnet18
+import haiku_trainer as trainer
+from haiku_cifar_resnet import resnet18
+#from haiku_resnets import ResNet18 as resnet18
 import cifar_100
 
+#python helper inputs
+import time
+from typing import NamedTuple
 
-def prepare_data(dataset_args, val_dataset_args):
+
+def prepare_data(dataset_args, val_dataset_args, args):
     
     train_dataset = cifar_100.CIFAR_100_transformations(train = True, **dataset_args)
     dataloader = DataLoader(
@@ -40,11 +46,25 @@ def prepare_data(dataset_args, val_dataset_args):
     )
     return train_dataset, dataloader, val_dataloader
 
+class TrainState(NamedTuple):
+  params: hk.Params
+  state: hk.State
+  optimizer: optax._src.base.GradientTransformation
+  opt_state: optax.OptState
 
-def create_params(model, example, rng):
-    model = model
-    batch = example  # (N, H, W, C) format
-    params = model.init(rng, batch)['params']
+
+def _forward(image, is_training: bool) -> jnp.ndarray:
+  """Forward application of the resnet."""
+  net = resnet18()
+  return net(image, is_training=is_training)
+
+
+def create_params(example, rng):
+    def resnet(x):
+        resnet = resnet18()
+        return resnet(x, True)
+    resnet = hk.transform_with_state(resnet)
+    params = resnet.init(rng, example)
     return params
 
 
@@ -55,23 +75,15 @@ def create_optimizer(optimizer, lr, wd):
 def cross_entropy_loss(logits, labels):
     return optax.softmax_cross_entropy(logits=logits, labels=labels).mean()
 
-
-def create_train_state(rng, optimizer):
-    """Creates initial `TrainState`."""
-    model = resnet18()
-    batch = jnp.ones((4, 32, 32, 3))  # (N, H, W, C) format
-    params = model.init(jax.random.PRNGKey(0), batch)['params']
-    tx = optimizer
-    return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
-
-def loss_fn(params, data):
-    logits, _ = model.apply({'params': params}, data['image0'], mutable=['batchstats'])
-    loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis= 0)
-    return loss, logits
-
 def master_train_step(state, data, metrics):
+    params = state.params
+    #print(params)
+    #print(state.state)
 
-    state, logits, loss = training_step(state, data)
+    logits, loss, grads = training_step(state.state, params, data)
+    print(grads)
+    updates, state.opt_state = state.optimizer(grads, state.opt_state, params)
+    state.params = optax.apply_updates(state.params, updates)
 
     acc1 = top_1_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
     acc5 = top_5_error_rate_metric(logits = logits, one_hot_labels = data['label']) 
@@ -81,22 +93,21 @@ def master_train_step(state, data, metrics):
     metrics['Accuracy'] += acc1
     metrics['Accuracy Top 5'] += acc5
 
+    state.state = new_state
+
     return state
 
 
 
 @jax.jit
-def training_step(state, data):
-    
-    def loss_fn(params, data):
-        logits, _ = resnet18().apply({'params': params}, data['image0'], mutable=['batch_stats'])
-        loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis= 0)
+def training_step(state, params, data):
+    def loss_fn(state, params, data):
+        logits, state = forward.apply(params, state, None, data['image0'], is_training=True)
+        loss = jnp.mean(jax.vmap(cross_entropy_loss)(logits=logits, labels=data['label']), axis = 0)
         return loss, logits
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (loss, logits), grads = grad_fn(state.params, data)
-    state = state.apply_gradients(grads=grads)
-
-    return state, logits, loss
+    (loss, logits), grads = grad_fn(state, params, data)
+    return logits, loss, grads
 
 
 def master_val_step(state, data, metrics):
@@ -152,7 +163,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', nargs='?', default = .001, type=float)
     parser.add_argument('--workers', nargs='?', default = 1,  type=int)
     parser.add_argument('--steps', nargs='?', default = 10000,  type=int)
-    parser.add_argument('--batch_size', nargs='?', default = 256,  type=int)
+    parser.add_argument('--batch_size', nargs='?', default = 2,  type=int)
     parser.add_argument('--val_steps', nargs='?', default = 70,  type=int)
     parser.add_argument('--log_n_steps', nargs='?', default = 1000,  type=int)
     parser.add_argument('-log', action='store_true')
@@ -162,8 +173,17 @@ if __name__ == '__main__':
     parser.add_argument('--warmup_steps', default = 200, type = int)
     parser.add_argument('-checkpoint', action='store_true')
     parser.add_argument('--checkpoint_path', default = None, type = str)
+    
+    #distributed arguments
+    parser.add_argument("--dist_url", default="tcp://localhost:40000", type=str,
+                    help="""url used to set up distributed training; see https://pytorch.org/docs/stable/distributed.html""")
+    parser.add_argument("--world_size", default=-1, type=int, 
+                    help="""number of processes: it is set automatically and should not be passed as argument""")
+    parser.add_argument("--rank", default=0, type=int, 
+                    help="""rank of this process: it is set automatically and should not be passed as argument""")
+    parser.add_argument("--job_id", default=0, type=int, 
+                    help="""rank of this process: it is set automatically and should not be passed as argument""")
     args = parser.parse_args()
-
     if args.data_path[-1] != '/': args.data_path = args.data_path + '/'
         
     args.wd = 1.5e-6
@@ -215,7 +235,6 @@ if __name__ == '__main__':
     #create the model and the optimizer
     rng = jax.random.PRNGKey(0)
     rng, init_rng = jax.random.split(rng)
-    model = resnet18()
     schedule = optax.warmup_cosine_decay_schedule(
                                                     init_value=3e-05,
                                                     peak_value=args.lr,
@@ -224,8 +243,21 @@ if __name__ == '__main__':
                                                     end_value=args.lr * .01,
                                                     )
 
-    optimizer = optax.adamw(schedule, weight_decay=args.wd)
-    state = create_train_state(init_rng, optimizer)
+    #resnet = hk.transform(resnet18)
+    #params = resnet.init(rng, jnp.ones((4, 32, 32, 3)))
+    
+    forward = hk.transform_with_state(_forward)
+    params, state = forward.init(init_rng, jnp.ones((4, 32, 32, 3)), True)
+    opt_init, opt_update = optax.adamw(schedule, weight_decay=args.wd)
+    opt_state = opt_init(params)
+
+    state = TrainState(params, state, opt_update, opt_state)
+    # Transform our forwards function into a pair of pure functions.
+    
+
+
+    #prepare the data
+    #dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args)
 
     #log if applicable
     if args.log and args.rank == 0:
@@ -233,8 +265,10 @@ if __name__ == '__main__':
     else: wandb = None
     steps = 0
 
-    train_dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args)
-
+    train_dataset, dataloader, val_dataloader = prepare_data(args.dataset_args, args.val_dataset_args, args)
+    import time
+    now = time.time()
+     
     trainer = trainer.Trainer(
                              state = state,
                              dataloader = dataloader, 
@@ -248,4 +282,9 @@ if __name__ == '__main__':
                              wandb = wandb)
     
     trainer.train()
+    
+    
+    
+    
+    
     
