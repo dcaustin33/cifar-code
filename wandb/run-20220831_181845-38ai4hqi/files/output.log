@@ -1,0 +1,56 @@
+Files already downloaded and verified
+Files already downloaded and verified
+Starting from step 0
+Training for 10001 steps
+Traceback (most recent call last):
+  File "/home/ec2-user/cifar/cifar-code/flax_evaluate_cifar.py", line 189, in <module>
+    evaluator.evaluate()
+  File "/home/ec2-user/cifar/cifar-code/flax_evaluator.py", line 55, in evaluate
+    _ = self.validation_step(self.params, val_data, self.val_metrics)
+  File "/home/ec2-user/cifar/cifar-code/flax_evaluate_cifar.py", line 70, in master_val_step
+    logits = validation_step(params, data)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/traceback_util.py", line 162, in reraise_with_filtered_traceback
+    return fun(*args, **kwargs)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/api.py", line 527, in cache_miss
+    out_flat = xla.xla_call(
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/core.py", line 1937, in bind
+    return call_bind(self, fun, *args, **params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/core.py", line 1953, in call_bind
+    outs = top_trace.process_call(primitive, fun_, tracers, params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/core.py", line 687, in process_call
+    return primitive.impl(f, *tracers, **params)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 208, in _xla_call_impl
+    compiled_fun = xla_callable(fun, device, backend, name, donated_invars,
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/linear_util.py", line 295, in memoized_fun
+    ans = call(fun, *args)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 257, in _xla_callable_uncached
+    return lower_xla_callable(fun, device, backend, name, donated_invars, False,
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 849, in compile
+    self._executable = XlaCompiledComputation.from_xla_computation(
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 956, in from_xla_computation
+    compiled = compile_or_get_cached(backend, xla_computation, options,
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 921, in compile_or_get_cached
+    return backend_compile(backend, computation, compile_options, host_callbacks)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/profiler.py", line 294, in wrapper
+    return func(*args, **kwargs)
+  File "/home/ec2-user/.local/lib/python3.9/site-packages/jax/_src/dispatch.py", line 865, in backend_compile
+    return backend.compile(built_c, compile_options=options)
+jax._src.traceback_util.UnfilteredStackTrace: jaxlib.xla_extension.XlaRuntimeError: UNKNOWN: Failed to determine best cudnn convolution algorithm for:
+%cudnn-conv = (f32[256,34,34,64]{2,1,3,0}, u8[0]{0}) custom-call(f32[256,32,32,3]{2,1,3,0} %copy, f32[3,3,3,64]{1,0,2,3} %copy.1), window={size=3x3 pad=2_2x2_2}, dim_labels=b01f_01io->b01f, custom_call_target="__cudnn$convForward", metadata={op_name="jit(validation_step)/jit(main)/ResNet/conv1/conv_general_dilated[window_strides=(1, 1) padding=((2, 2), (2, 2)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 lhs_shape=(256, 32, 32, 3) rhs_shape=(3, 3, 3, 64) precision=None preferred_element_type=None]" source_file="/home/ec2-user/.local/lib/python3.9/site-packages/flax/linen/linear.py" source_line=435}, backend_config="{\"conv_result_scale\":1,\"activation_mode\":\"0\",\"side_input_scale\":0}"
+Original error: UNIMPLEMENTED: DNN library is not found.
+To ignore this failure and try to use a fallback algorithm (which may have suboptimal performance), use XLA_FLAGS=--xla_gpu_strict_conv_algorithm_picker=false.  Please also file a bug for the root cause of failing autotuning.
+The stack trace below excludes JAX-internal frames.
+The preceding is the original exception that occurred, unmodified.
+--------------------
+The above exception was the direct cause of the following exception:
+Traceback (most recent call last):
+  File "/home/ec2-user/cifar/cifar-code/flax_evaluate_cifar.py", line 189, in <module>
+    evaluator.evaluate()
+  File "/home/ec2-user/cifar/cifar-code/flax_evaluator.py", line 55, in evaluate
+    _ = self.validation_step(self.params, val_data, self.val_metrics)
+  File "/home/ec2-user/cifar/cifar-code/flax_evaluate_cifar.py", line 70, in master_val_step
+    logits = validation_step(params, data)
+jaxlib.xla_extension.XlaRuntimeError: UNKNOWN: Failed to determine best cudnn convolution algorithm for:
+%cudnn-conv = (f32[256,34,34,64]{2,1,3,0}, u8[0]{0}) custom-call(f32[256,32,32,3]{2,1,3,0} %copy, f32[3,3,3,64]{1,0,2,3} %copy.1), window={size=3x3 pad=2_2x2_2}, dim_labels=b01f_01io->b01f, custom_call_target="__cudnn$convForward", metadata={op_name="jit(validation_step)/jit(main)/ResNet/conv1/conv_general_dilated[window_strides=(1, 1) padding=((2, 2), (2, 2)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 lhs_shape=(256, 32, 32, 3) rhs_shape=(3, 3, 3, 64) precision=None preferred_element_type=None]" source_file="/home/ec2-user/.local/lib/python3.9/site-packages/flax/linen/linear.py" source_line=435}, backend_config="{\"conv_result_scale\":1,\"activation_mode\":\"0\",\"side_input_scale\":0}"
+Original error: UNIMPLEMENTED: DNN library is not found.
+To ignore this failure and try to use a fallback algorithm (which may have suboptimal performance), use XLA_FLAGS=--xla_gpu_strict_conv_algorithm_picker=false.  Please also file a bug for the root cause of failing autotuning.

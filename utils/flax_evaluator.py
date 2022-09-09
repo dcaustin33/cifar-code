@@ -8,7 +8,7 @@ from flax_logger import log_metrics as logger
 
 class Evaluator:
     def __init__(self, 
-                 state: train_state,
+                 params: train_state,
                  val_dataloader: DataLoader,
                  args,
                  validation_step,
@@ -16,7 +16,7 @@ class Evaluator:
                  val_metrics: dict = None,
                  wandb = None):
         
-        self.state = state
+        self.params = params
         self.val_dataloader = val_dataloader
         self.args = args
         self.validation_step = validation_step
@@ -38,20 +38,13 @@ class Evaluator:
         if self.current_step: steps = self.current_step
         else: steps = 0
 
-        if self.args.rank == 0:
-            print('Starting from step', steps)
-            print('Training for', self.args.steps, 'steps')
+
+        print('Starting from step', steps)
+        print('Validation for', self.args.val_steps, 'steps')
             
         check_path = 'checkpoints/' + self.args.name
-        
-        if self.args.rank == 0:
-            try:
-                os.mkdir(check_path)
-            except FileExistsError:
-                os.system('rm -r -f {path}'.format(path = check_path))
-                os.mkdir(check_path)
         check_path = check_path + '/'
-
+        val_steps = 0
         while val_steps < self.args.val_steps:
 
             for k, val_data in enumerate(self.val_dataloader):
@@ -59,7 +52,7 @@ class Evaluator:
                 val_data = self.convert_data(val_data)
                 if val_steps >= self.args.val_steps: break
 
-                _ = self.validation_step(self.state, val_data, self.val_metrics)
+                _ = self.validation_step(self.params, val_data, self.val_metrics)
                 if val_steps % self.args.log_n_val_steps == 0 and val_steps != 0:
                     self.val_metrics = logger(self.val_metrics, steps, wandb = self.wandb, train = False)
                 val_steps += 1

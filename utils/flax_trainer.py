@@ -6,7 +6,7 @@ import time
 import os
 from flax.training import train_state, checkpoints
 import optax
-from flax_logger import log_metrics as logger
+from utils.flax_logger import log_metrics as logger
 
 class Trainer:
     def __init__(self, 
@@ -16,8 +16,6 @@ class Trainer:
                  args, 
                  training_step,
                  validation_step,
-                 optimizer = None, 
-                 optimizer_state = None,
                  current_step = None,
                  metrics: dict = None,
                  val_metrics: dict = None,
@@ -48,18 +46,10 @@ class Trainer:
         if self.current_step: steps = self.current_step
         else: steps = 0
 
-        if self.args.rank == 0:
-            print('Starting from step', steps)
-            print('Training for', self.args.steps, 'steps')
+        print('Starting from step', steps)
+        print('Training for', self.args.steps, 'steps')
             
         check_path = 'checkpoints/' + self.args.name
-        
-        if self.args.rank == 0:
-            try:
-                os.mkdir(check_path)
-            except FileExistsError:
-                os.system('rm -r -f {path}'.format(path = check_path))
-                os.mkdir(check_path)
         check_path = check_path + '/'
 
         while steps < self.args.steps:
@@ -74,12 +64,13 @@ class Trainer:
 
                 if steps % self.args.log_n_train_steps == 0:
                     self.metrics = logger(self.metrics, steps, wandb = self.wandb, train = True)
-                if steps % 10 == 0 and self.args.rank == 0:
+                if steps % 10 == 0:
                     print(steps, time.time() - now) 
                 
                 if steps % self.args.log_n_steps == 0:
-                    checkpoints.save_checkpoint(ckpt_dir='{name}'.format(name = check_path + self.args.name), 
-                                                target=self.state, step=steps)
+                    checkpoints.save_checkpoint(ckpt_dir='{name}'.format(name = check_path), 
+                                                target=self.state, step=steps, overwrite=True,
+                                                prefix = 'Checkpoint_{name}'.format(name = self.args.name))
 
                     val_steps = 0
                     while val_steps < self.args.val_steps:
@@ -94,7 +85,8 @@ class Trainer:
                                 self.val_metrics = logger(self.val_metrics, steps, wandb = self.wandb, train = False)
                             val_steps += 1
 
-        checkpoints.save_checkpoint(ckpt_dir='{name}'.format(name = check_path + self.args.name), 
-                                    target=self.state, step=steps, prefix = 'Final')
+        checkpoints.save_checkpoint(ckpt_dir='{name}'.format(name = check_path), 
+                                    target=self.state.params, step=steps, overwrite=True,
+                                    prefix = 'Final_{name}'.format(name = self.args.name))
 
         print(time.time() - now)

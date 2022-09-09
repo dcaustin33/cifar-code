@@ -110,7 +110,7 @@ class ResNet(nn.Module):
         
     def setup(self):
 
-        self.conv1 = nn.Conv(3, kernel_size = (7, 7), strides = 2, use_bias = False, padding = ((3, 3), (3, 3)))
+        self.conv1 = nn.Conv(64, kernel_size = (7, 7), strides = 2, use_bias = False, padding = ((3, 3), (3, 3)))
         self.bn1 = self.norm_layer(use_running_average = False)
         
         self.layer1 = self.make_layer(self.block, 64,  self.layers[0], stride = 1)
