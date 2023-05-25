@@ -1,1 +1,0 @@
-{"total": 25600, "Loss": 29.8137264251709, "Accuracy": 0.9133203029632568, "Accuracy Top 5": 0.989062488079071, "_timestamp": 1661784689.095883, "_runtime": 1021.8278968334198, "_step": 10000, "Val total": 17920, "Val CE Loss": 0, "Val Accuracy": 0.9704799056053162, "Val Accuracy Top 5": 0.9994419813156128, "Val Loss": 0, "_wandb": {"runtime": 1022}}
